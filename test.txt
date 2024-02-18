@@ -1,0 +1,8 @@
+var a = 1;
+if (a < 2) {
+var a = 5;
+}
+return a;
+
+return d;
+
