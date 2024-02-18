@@ -1,5 +1,8 @@
 #lang racket
+(require "abstractions.rkt")
 (require "simpleParser.rkt")
+(require "helperFunctions.rkt")
+                          
 
 
 (define interpret
@@ -32,6 +35,16 @@
       (else                    "cannot evaluate"
       ))))
 
+; Returns a value corresponding the var if it exists 
+(define M_var_value
+  (lambda (var state)
+    (cond
+      ((M_varDeclared var state) ;Does this variable exist?
+       (cond                     ;If it does exist was it initialized?
+         ((null? (M_lookup var state))      (error "Variable not inititialized"))
+         (else                                    (M_lookup var state))))
+       (else                                      (error "Variable not Declared")))))
+
 ; Categorizes a boolean statement and calls a respective handler if neccessary
 ; If the statement is an explicit boolean return #t/#f respectively
 (define M_boolean
@@ -39,17 +52,9 @@
     (cond
       ((eq? 'true condition) #t)
       ((eq? 'false condition) #f)
-      ((number?             condition)     (error "Number not a boolean"))
-      ((boolean?            condition)     condition)
       ((isComparison?       condition)     (M_boolean_comparison condition state))
       ((isBooleanOperation? condition)     (M_boolean_op condition state))
       (else                          (M_var_value condition state)))))
 
 
 
-;Abstractions
-
-; Operator and operand abstractions:
-(define operator car)
-(define leftoperand cadr)
-(define rightoperand caddr)
