@@ -1,6 +1,11 @@
 #lang racket
 (require "simpleParser.rkt")
 
+
+(define interpret
+  (lambda (filename)
+    (buildParseTree (parser filename) '(() ()))))
+
 ; Returns a integer value
 (define Minteger
   (lambda (expr state)
@@ -30,13 +35,14 @@
 ; Categorizes a boolean statement and calls a respective handler if neccessary
 ; If the statement is an explicit boolean return #t/#f respectively
 (define M_boolean
-  (lambda (lis state)
+  (lambda (condition state)
     (cond
-      ((number?             lis)     (error "Number not a boolean"))
-      ((isTrue?             lis)     #t)
-      ((isFalse?            lis)     #f)
-      ((boolean?            lis)     lis)
-      ((var?                lis)     (M_var_value lis state))
-      ((isComparison?       lis)     (M_boolean_comparison lis state))
-      ((isBooleanOperation? lis)     (M_boolean_op lis state))
+      ((number?             condition)     (error "Number not a boolean"))
+      ((isTrue?             condition)     #t)
+      ((isFalse?            condition)     #f)
+      ((boolean?            condition)     condition)
+      ((var?                condition)     (M_var_value lis state))
+      ((isComparison?       condition)     (M_boolean_comparison lis state))
+      ((isBooleanOperation? condition)     (M_boolean_op lis state))
       (else                          (error "Invalid Logic Operand(s)")))))
+
