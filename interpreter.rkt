@@ -37,12 +37,19 @@
 (define M_boolean
   (lambda (condition state)
     (cond
+      ((eq? 'true condition) #t)
+      ((eq? 'false condition) #f)
       ((number?             condition)     (error "Number not a boolean"))
-      ((isTrue?             condition)     #t)
-      ((isFalse?            condition)     #f)
       ((boolean?            condition)     condition)
-      ((var?                condition)     (M_var_value lis state))
-      ((isComparison?       condition)     (M_boolean_comparison lis state))
-      ((isBooleanOperation? condition)     (M_boolean_op lis state))
-      (else                          (error "Invalid Logic Operand(s)")))))
+      ((isComparison?       condition)     (M_boolean_comparison condition state))
+      ((isBooleanOperation? condition)     (M_boolean_op condition state))
+      (else                          (M_var_value condition state)))))
 
+
+
+;Abstractions
+
+; Operator and operand abstractions:
+(define operator car)
+(define leftoperand cadr)
+(define rightoperand caddr)
