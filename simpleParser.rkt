@@ -340,3 +340,5 @@
           (else (error 'parser "Unknown statmement")))));)
 
 
+
+(parser "test.txt")
