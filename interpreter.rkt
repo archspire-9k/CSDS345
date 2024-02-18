@@ -1,42 +1,59 @@
 #lang racket
-(require "simpleParser.rkt")
 
-; Returns a integer value
-(define Minteger
-  (lambda (expr state)
-    (cond
-    ((number? expr)                        expr)
-    ((var? expr)                           (M_var_value expr state))
-    ((isNeg? expr)                         (-         0                                       (Minteger(leftoperand  expr) state)))
-    ((subtract? expr)                      (-         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((add? expr)                           (+         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((multiply? expr)                      (*         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((divide? expr)                        (quotient  (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((remainder? expr)                     (remainder (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    (else                                  "No valid operator"))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IMPORT & EXPORT;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Returns a value using a handler based value type
-(define M_value
-  (lambda (lis state)
-    (cond
-      ((number? lis)                        lis)
-      ((var? lis)              (M_var_value lis state))
-      ((boolean? lis)                       lis)
-      ((isArithmetic? lis)     (Minteger    lis state))
-      ((isBoolean? lis state)  (M_boolean   lis state))
-      (else                    "cannot evaluate"
-      ))))
+(require "interpreter_state.rkt"
+         "mapfunctionshelper.rkt"
+         "simpleParser.rkt")
 
-; Categorizes a boolean statement and calls a respective handler if neccessary
-; If the statement is an explicit boolean return #t/#f respectively
-(define M_boolean
-  (lambda (lis state)
-    (cond
-      ((number?             lis)     (error "Number not a boolean"))
-      ((isTrue?             lis)     #t)
-      ((isFalse?            lis)     #f)
-      ((boolean?            lis)     lis)
-      ((var?                lis)     (M_var_value lis state))
-      ((isComparison?       lis)     (M_boolean_comparison lis state))
-      ((isBooleanOperation? lis)     (M_boolean_op lis state))
-      (else                          (error "Invalid Logic Operand(s)")))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; HELPER ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; check whether statements matches symbol
+(define matches?
+  (lambda (symbol statement)
+    (equal? symbol (car statement))))
+
+; get the statement type/condition by checking true or false
+; statement from the requirement:
+;Formally, a syntax tree is a list where each sublist corresponds
+;to a statement. The different statements are:
+;variable declaration	(var variable) or (var variable value)
+;assignment	(= variable expression)
+;return	(return expression)
+;if statement	(if conditional then-statement optional-else-statement)
+;while statement	(while conditional body-statement)
+
+; var
+(define declaration?
+  (lambda (statement)
+    (matches? 'var statement)))
+
+; assignment
+(define assign?
+  (lambda (statement)
+    (matches? '= statement)))
+; return
+(define return?
+  (lambda (statement)
+    (matches? 'return statement)))
+
+;if
+(define if?
+  (lambda (statement)
+    (matches? 'if statement)))
+
+;while
+(define while?
+  (lambda (statement)
+    (matches? 'while statement)))
+
+; arithmetic operations
+(define arithmetic_operations
+  (map-from-interlaced-entry-list
+   (list '+  +
+         '-  -
+         '/  quotient
+         '*  *
+         '%  modulo)
+   '()))
