@@ -45,7 +45,7 @@
   (lambda (key map)
     (cond
       [(null? map) map]
-      [(eq? key (car map)) (removeall key (cdr map))]
+      [(eq? key (caar map)) (removeall key (cdr map))]
       [else (cons (car map) (removeall key (cdr map)))])))
 
 ; remove first occurence matching key
@@ -54,7 +54,7 @@
   (lambda (key map)
     (cond
       ((null? map) map)
-      ((eq? key (car map))(cdr map))
+      ((eq? key (caar map))(cdr map))
       (else (cons (car map) (removefirst key (cdr map)))))))
 
 ; update entries

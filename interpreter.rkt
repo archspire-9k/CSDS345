@@ -201,13 +201,11 @@
 
 (define Mstate-assign-helper
   (lambda (var-name val-expr state)
-    (if (state-var-declared? var-name state)
-        (state-assign-var var-name
+    (if (state-declared? var-name state)
+        (state-initialized? var-name
                           (Mvalue val-expr state)
-                          (Mstate-expr val-expr state))
-        ; else assigning to undeclared var
-        (error (string-append "Have not declared variable"
-                              (symbol->string var-name))))))
+                          (M_var_value val-expr state))
+        (error ("Have not declared variable")))))
 
 ;======================================================
 ; M_boolean FUNCTIONS
