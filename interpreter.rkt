@@ -20,6 +20,20 @@
 ; ABSTRACTION
 ;======================================================
 
+; Return
+(define return-value cadr)
+
+; If
+; condition
+(define if-condition cadr)
+; statement
+(define if-statement caddr)
+
+; While
+; condition
+(define while-condition cadr)
+(define while-statement caddr)
+  
 ;Abstractions for variable
 (define var?
   (lambda (x)
@@ -50,7 +64,7 @@
       ((number? lis)                               #f)
       ((boolean? lis)                              #t)
       ((or (eq? 'true lis) (eq? 'false lis))           #t)
-      ((var? lis) (boolean?                        (M_var_value lis state)))
+      ((var? lis) (boolean?                        (map-getKey lis state)))
       ((and (not (null? lis)) (and (list? lis)     (member (operator lis) '(== && || > < >= <= ! !=)))))
       (else #f))))
 
@@ -105,29 +119,15 @@
         (map-containsKey? (car expr)  M_boolean_comparison)
         (map-containsKey? (car expr) M_boolean_op))))
 
-;Helper functions
 ; Returns a value corresponding the var if it exists 
 (define M_var_value
   (lambda (var state)
     (cond
-      ((state-declare var state) ;Does this variable exist?
+      ((state-declared? var state) ;Does this variable exist?
        (cond                     ;If it does exist was it initialized?
          ((false? (state-initialized? var state))      (error "Variable not inititialized"))
-         (else                                    (M_var_value var state))))
+         (else                                    (map-getKey var state))))
        (else                                      (error "Variable not Declared")))))
-
-; Helper function
-; Given
-(define M_value
-  (lambda (lis state)
-    (cond
-      ((null? lis) (error "lis is null"))
-      ((number? lis)                        lis)
-      ((var? lis)              (M_var_value lis state))
-      ((boolean? lis)                       lis)
-      ((isArithmetic? lis)     (Minteger    lis state))
-      ((isBoolean? lis state)  (M_boolean   lis state))
-      (else                    "cannot evaluate"))))
 
 ; Processes arithmetic operations
 (define M_arithmetic_op
@@ -165,24 +165,41 @@
 
       (else (error "Invalid comparison")))))
 
-; Returns a integer value
-(define Minteger
-  (lambda (expr state)
-    (cond
-    ((number? expr)                        expr)
-    ((var? expr)                           (M_var_value expr state))
-    ((isNeg? expr)                         (-         0                                       (Minteger(leftoperand  expr) state)))
-    ((subtract? expr)                      (-         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((add? expr)                           (+         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((multiply? expr)                      (*         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((divide? expr)                        (quotient  (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ((remainder? expr)                     (remainder (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    (else                                  "No valid operator"))))
-
 
 ;======================================================
 ; M_STATE FUNCTIONS
 ;======================================================
+
+(define M_state
+  (lambda (statement state)
+    (cond
+      ;return 
+      ((return?) (M_return (returnValue statement) state))
+      ;var
+      ((declaration?) (M_declaration statement state))
+      ;assignment
+      ((assign?) (M_assign (leftoperand statement) (rightoperand statement) state))
+      ;if
+      ((if?)    (M_if (if-condition statement) (if-statement statement) state))
+      ;while
+      ((while?) (M_while (while-condition statement) (while-statement statement) state))
+      (else ("Unable to parse")))))
+
+; Returns the value through value state
+(define M_return
+  (lambda (statement state)
+      (M_value statement state)))
+
+; Returns a value using a handler based value type
+(define M_value
+  (lambda (statement state)
+    (cond
+      ((number? statement)                        statement)
+      ((var? statement)              (M_var_value statement state))
+      ((boolean? statement)                       statement)
+      ((isArithmetic? statement)     (M_arithmetic_op    statement state))
+      ((isBoolean? statement state)  (M_boolean   statement state))
+      (else                    "cannot evaluate"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ASSIGN ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -220,5 +237,19 @@
       ((isComparison?       condition)     (M_boolean_comparison condition state))
       ((isBooleanOperation? condition)     (M_boolean_op condition state))
       (else                          (M_var_value condition state)))))
+
+; Returns a integer value
+;(define Minteger
+ ; (lambda (expr state)
+  ;  (cond
+   ; ((number? expr)                        expr)
+    ;((var? expr)                           (M_var_value expr state))
+    ;((isNeg? expr)                         (-         0                                       (Minteger(leftoperand  expr) state)))
+    ;((subtract? expr)                      (-         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
+    ;((add? expr)                           (+         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
+    ;((multiply? expr)                      (*         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
+    ;((divide? expr)                        (quotient  (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
+    ;((remainder? expr)                     (remainder (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
+    ;(else                                  "No valid operator"))))
 
 
