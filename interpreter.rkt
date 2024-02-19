@@ -169,31 +169,6 @@
       ((eq? (operator lis) '>)                                  (>   (Minteger       (leftoperand lis) state) (Minteger  (rightoperand lis) state)))
       ((eq? (operator lis) '<=)                                  (<=  (Minteger       (leftoperand lis) state) (Minteger  (rightoperand lis) state)))
       ((eq? (operator lis) '>=)                              (>=  (Minteger       (leftoperand lis) state) (Minteger  (rightoperand lis) state)))
-<<<<<<< Updated upstream
-      ((eq? (operator lis) '==)   (eq? (M_value     (leftoperand lis) state) (M_value (rightoperand lis) state)))
-      ((eq? (operator lis) '!=)   (not (eq? (M_value (leftoperand lis) state) (M_value (rightoperand lis) state))))
-
-      (else (error "Invalid comparison")))))
-
-; *******************STATES********************
-(define M_state
-  (lambda (statement state)
-    (cond
-      ;return 
-      ((matches? 'return) 'return) (M_return (leftoperand statement) state))
-      ;var
-      ((eq? (operator statement) 'var) (M_declaration statement state))
-      ;assignment
-      ((eq? (function statement) '=) (M_assign (leftoperand statement) (rightoperand statement) state))
-      ;if
-      ((eq? (function statement) 'if)
-       
-       )
-      ;while
-      ((eq? (function statement) 'while) (M_while (whileCondition statement) (whileStatement statement) state))
-      (else ("Unable to parse")))))
-
-=======
       (((eq? (operator lis) '==))  (eq? (M_value (leftoperand lis) state) (M_value (rightoperand lis) state)))
       (((eq? (operator lis) '!=)) (not (eq? (M_value (leftoperand lis) state) (M_value (rightoperand lis) state))))
 
@@ -246,7 +221,6 @@
 ;======================================================
 ; M_boolean FUNCTIONS
 ;======================================================
->>>>>>> Stashed changes
 (define M_boolean
   (lambda (condition state)
     (cond
