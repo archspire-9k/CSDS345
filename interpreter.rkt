@@ -16,19 +16,10 @@
          )
 (require "interpreter_state.rkt")
 
-<<<<<<< Updated upstream
-; *************************** Operator finder ***********************************
-
-; Find the operator for the current list
-
-
-; *************************** Abtraction ****************************************
-=======
 ;======================================================
 ; ABSTRACTION
 ;======================================================
 
->>>>>>> Stashed changes
 ;Abstractions for variable
 (define var?
   (lambda (x)
