@@ -1,5 +1,12 @@
 #lang racket
 
+;======================================================
+;; CSDS 345 Interpreter Part 1
+;; Spring 2024
+;; Group 7 
+;; Helen Nguyen, Duong Nguyen, Matt Le
+;======================================================
+
 ; export functions
 (provide (prefix-out map-
                      (combine-out addElement
@@ -9,10 +16,11 @@
                                   removeall
                                   removefirst
                                   replace
-                                  from-interlaced-entry-list)))
+                                  from_interlaced_entry_list)))
 
 ; Map Functions
 
+(define empty '())
 ; add element into map
 (define addElement
   (lambda (key element map)
@@ -62,15 +70,14 @@
   (lambda (key value map)
     (addElement key value (removeall key map))))
 
-;; ************************  CHUA HIEU METHOD NAY LAM GI DAU !!!!
 ;; treats the first and second elems as key and value
 ;; returns a map with the entries
-(define from-interlaced-entry-list
+(define from_interlaced_entry_list
   (lambda (lis map)
     (if (null? lis)
         map
-        (from-interlaced-entry-list (cdr (cdr lis))
+        (from_interlaced_entry_list(cdr (cdr lis))
                                     (addElement (first lis) (second lis) map)))))
-;; ************************  CHUA HIEU METHOD NAY LAM GI DAU !!!!
+
 
 

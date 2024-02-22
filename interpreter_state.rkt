@@ -1,5 +1,12 @@
 #lang racket
 
+;======================================================
+;; CSDS 345 Interpreter Part 1
+;; Spring 2024
+;; Group 7 
+;; Helen Nguyen, Duong Nguyen, Matt Le
+;======================================================
+
 ; import map functions from mapfunctionhelper
 (require "mapfunctionshelper.rkt")
 
@@ -19,6 +26,7 @@
 ; instantiate new state
 (define new-state '())
 
+(define (initial-state) '((true #t) (false #f)))
 
 (define declare
   (lambda (name state)
