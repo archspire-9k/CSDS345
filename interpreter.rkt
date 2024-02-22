@@ -17,8 +17,24 @@
 (require "interpreter_state.rkt")
 
 ;======================================================
+; INTERPRETER
+;======================================================
+
+; Inteprets the file and passes it to our parseCarOfTree function
+(define interpret
+  (lambda (filename)
+    (generate-parse-tree (parser filename) '( (() ()) ) )))
+
+(define generate-parse-tree
+  (lambda (parse-tree state)
+    (cond
+      ((null? parse-tree) state)
+      (else(generate-parse-tree (rest parse-tree) (M_state (first parse-tree) state))))))
+
+;======================================================
 ; ABSTRACTION
 ;======================================================
+; initial state
 
 ; Return
 (define return-value cadr)
@@ -184,15 +200,15 @@
   (lambda (statement state)
     (cond
       ;return 
-      ((return?) (M_return (state-get-return-value statement) state))
+      ((return? statement) (M_return (state-get-return-value statement) state))
       ;var
-      ((declaration?) (M_declaration statement state))
+      ((declaration? statement) (M_declaration statement state))
       ;assignment
-      ((assign?) (M_assign (leftoperand statement) (rightoperand statement) state))
+      ((assign? statement) (M_assign (leftoperand statement) (rightoperand statement) state))
       ;if
-      ((if?)    (M_if (if-condition statement) (if-statement statement) state))
+      ((if? statement)    (M_if statement state))
       ;while
-      ((while?) (M_while (while-condition statement) (while-statement statement) state))
+      ((while? statement) (M_while statement state))
       (else ("Unable to parse")))))
 
 ; Returns the value through value state
@@ -230,7 +246,7 @@
     (cond
       [(state-declared? name state) (error ("Cannot declare var"))]
       [(null? expression) (state-declare name state)]
-      [else (state-assign name (M_value (unbox expression) state) (M_expression (unbox expression) state))])))                                                         
+      [else (state-assign name (M_value (cadr expression) state) (M_expression (car expression) state))])))                                                         
                                                                     
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; If ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -250,7 +266,7 @@
     (cond
       [(M_boolean condition state) (M_state statement1 (M_expression condition state))]
       [(null? statement2) (M_expression condition state)]
-      [else (M_state (unbox statement2) (M_expression condition state))])))
+      [else (M_state (statement1) (M_expression condition state))])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; While ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -357,18 +373,5 @@
       ((isBoolean? condition)     (M_boolean_op condition state))
       (else                          (M_var_value condition state)))))
 
-; Returns a integer value
-;(define Minteger
- ; (lambda (expr state)
-  ;  (cond
-   ; ((number? expr)                        expr)
-    ;((var? expr)                           (M_var_value expr state))
-    ;((isNeg? expr)                         (-         0                                       (Minteger(leftoperand  expr) state)))
-    ;((subtract? expr)                      (-         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ;((add? expr)                           (+         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ;((multiply? expr)                      (*         (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ;((divide? expr)                        (quotient  (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ;((remainder? expr)                     (remainder (Minteger(leftoperand expr) state)      (Minteger(rightoperand expr) state)))
-    ;(else                                  "No valid operator"))))
 
 
