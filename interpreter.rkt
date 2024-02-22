@@ -16,6 +16,10 @@
          )
 (require "interpreter_state.rkt")
 
+(provide interpret
+         inital_states
+          M_statement_list)
+
 ;======================================================
 ; INTERPRETER
 ;======================================================
@@ -35,6 +39,15 @@
 ; ABSTRACTION
 ;======================================================
 ; initial state
+(define inital_states
+  (lambda (state)
+    (cond
+      [(eq? #t (state-get-return-value state))         'true]
+      [(eq? #f (state-get-return-value state))         'false]
+      [(number? (state-get-return-value state))        (state-get-return-value state)]
+      [else                                            (error "returned a value, but unsupported type: "
+                                                              (state-get-return-value state))])))
+
 
 ; Return
 (define return-value cadr)
@@ -59,6 +72,10 @@
 (define operator car)
 (define leftoperand cadr)
 (define rightoperand caddr)
+
+; M-Value
+(define first_symbol car)
+(define rest_symbol cdr)
 
 ; Condition abstractions:
 (define isArithmetic?
@@ -196,9 +213,11 @@
 ; M_STATE FUNCTIONS
 ;======================================================
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; STATEMENT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define M_state
   (lambda (statement state)
     (cond
+      ((null? statement) (error "statement is null"))
       ;return 
       ((return? statement) (M_return (state-get-return-value statement) state))
       ;var
@@ -211,21 +230,128 @@
       ((while? statement) (M_while statement state))
       (else ("Unable to parse")))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; STATEMENT LIST ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; executes a list of statements with a given initial state
+;; and returns the resulting state
+;; error if the statement list terminates w/out return
+(define M_statement_list
+  (lambda (statement-list state)
+    (cond
+      [(state-return? state)              state] 
+      [(null? statement-list)             (error "null statement, no return statement")]
+      [else                               (M_statement_list (cdr statement-list)
+                                                   (M_state (car statement-list)
+                                                                     state))])))
+
 ; Returns the value through value state
 (define M_return
   (lambda (statement state)
       (M_value statement state)))
 
-; Returns a value using a handler based value type
+;======================================================
+; M_VALUE FUNCTIONS
+;======================================================
+;;; ; Returns a value using a handler based value type
+;;; (define M_value
+;;;   (lambda (statement state)
+;;;     (cond
+;;;       ((number? statement) statement)
+;;;       ((var? statement) (M_var_value statement state))
+;;;       ((boolean? statement) statement)
+;;;       ((isArithmetic? statement) (M_arithmetic_op statement state))
+;;;       ((isBoolean? statement state) (M_boolean statement state))
+;;;       (else "error, not found"))))
+
+(define nested? list?)
+(define assign-var second)
+(define assign-expr third)
+
+;; returns the value of an expression, in the context of the given state
 (define M_value
+  (lambda (expr state)
+    (cond
+      [(null? expr)                        (error "called Mvalue on a null expression")]
+      [(not (nested? expr))                ( M_value_initial expr state)]
+      ; else nested expr
+      [(assign? expr)                   (M_value (assign-expr expr) state)]
+      [(boolean? expr)                  (M_boolean expr state)]
+      [(valid_operation expr)                      (M_value_operations expr state)]
+      [else                                (error "unreachable in Mvalue")])))
+
+;; returns the value of the token given the state
+;; token = 1 | 'x | 'true 
+(define M_value_initial
+  (lambda (token state)
+    (cond
+      [(number? token)            token]
+      [(eq? 'true token)          #t]
+      [(eq? 'false token)         #f]
+      [else                       (read_var token state)])))
+
+;; retrieves value of a var from state
+;; throws appropriate errors if undeclared or uninitialized
+(define read_var
+  (lambda (var-symbol state)
+    (cond
+      [(not (state-declared? var-symbol state))       (error "no declaration found")]
+      [(not (state-initialized? var-symbol state))    (error "no initialization found")]
+      [else                                               (state-value var-symbol state)])))
+
+;; assuming the atom is an op-symbol, returns the associated function
+(define op-of-symbol
+  (lambda (op-symbol)
+    (if (map-containsKey? op-symbol M_arithmetic_op)
+        (map-getKey op-symbol M_arithmetic_op)
+        (map-getKey op-symbol M_boolean_op
+        (map-getKey op-symbol M_boolean_comparison)))))
+
+;; takes a nested expression containing an op
+;; and evaluates it
+(define M_value_operations
+  (lambda (expr state)
+    (M_apply_operations (op-of-symbol (first_symbol expr))
+                  (M_list_to_value_map
+                   (sort_order_expression (first_symbol expr)
+                                                     (rest_symbol expr))
+                   state))))
+
+
+;; takes a list of exprs and maps them to values,
+;; propagating the state changes (so that they evaluate correctly)
+(define M_list_to_value_map
+  (lambda (expr-list state)
+    (if (null? expr-list)
+        expr-list
+        (cons (M_value (car expr-list) state)
+              (M_list_to_value_map (cdr expr-list)
+                                           (M_expression (car expr-list) state))))))
+
+
+;; takes an op-symbol and a val-list * already in order of associativity
+;; returns the value of the op applied to the list of values
+(define M_apply_operations
+  (lambda (op val-list)
+    (cond
+      [(eq? 1 (length val-list))                  (op (first val-list))]
+      [(eq? 2 (length val-list))                  (op (first val-list) (second val-list))]
+      [else                                       (error op val-list)])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; STATEMENT ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CHUA DOI ***
+;; takes a statement
+;; returns the state resulting from evaluating it
+(define M_statement
   (lambda (statement state)
     (cond
-      ((number? statement) statement)
-      ((var? statement) (M_var_value statement state))
-      ((boolean? statement) statement)
-      ((isArithmetic? statement) (M_arithmetic_op statement state))
-      ((isBoolean? statement state) (M_boolean   statement state))
-      (else "error not found"))))
+      [(state-return? state)                state] ; exit early on return
+      [(null? statement)                    (error "called Mstate on null statement")]
+      [(return? statement)               (M_return statement state)]
+      [(while? statement)                (M_while statement state)]
+      [(if? statement)                   (M_if statement state)]
+      [(assign? statement)               (M_assign statement state)]
+      [(declaration? statement)          (M_declaration statement state)]
+      [else                                 (error "unrecognized stmt:" statement)])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; DECLARATION ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -247,9 +373,8 @@
       [(state-declared? name state) (error ("Cannot declare var"))]
       [(null? expression) (state-declare name state)]
       [else (state-assign name (M_value (cadr expression) state) (M_expression (car expression) state))])))                                                         
-                                                                    
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; If ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; IF ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; an if statement
 (define if-stmt1 third)
@@ -268,7 +393,7 @@
       [(null? statement2) (M_expression condition state)]
       [else (M_state (statement1) (M_expression condition state))])))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; While ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; WHILE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; returns the state of the while statement
 (define M_while
