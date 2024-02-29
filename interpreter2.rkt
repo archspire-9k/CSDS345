@@ -297,8 +297,7 @@
     (cond
       [(M_boolean condition state)(M_statement statement1 (M_expression condition state))]
       [(null? statement2) (M_expression condition state)]
-      [else (M_statement (unbox statement2) (M_expression condition state))])))
-
+      [else (M_statement (car statement2) (M_expression condition state))])))
 
 ;======================================================
 ; M_STATE DECLARE
