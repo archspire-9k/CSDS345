@@ -39,7 +39,7 @@
 
 ; defines all oeprations
 (define arithmetic_table
-  (map-from-interlaced-entry-list
+  (map-from_interlaced_entry_list
    (list '+  +
          '-  -
          '/  quotient
@@ -49,7 +49,7 @@
 
 ; defines boolean and comparison operations
 (define boolean_table
-  (map-from-interlaced-entry-list
+  (map-from_interlaced_entry_list
    (list '&& (lambda (a b) (and a b))
          '|| (lambda (a b) (or a b))
          '!  not
