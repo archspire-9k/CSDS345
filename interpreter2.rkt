@@ -23,11 +23,6 @@
 ;======================================================
 ; ABSTRACT FUNCTIONS
 ;======================================================
-;Layer stack
-(define pop cdr)
-(define push
-  (lambda (state)
-    (cons '() state)))
 
 ; throw
 (define throw cadr)
@@ -94,6 +89,8 @@
 (define break? (matches? 'break))
 (define throw? (matches? 'throw))
 (define finally? (matches? 'finally))
+(define begin? (matches? 'begin))
+
   
 
 ;======================================================
@@ -301,8 +298,8 @@
 (define M_while_helper
   (lambda (condition body state return continue break throw)
     (if (M_boolean condition state)
-        (M_while_helper condition body (M_statement body (call/cc (lambda (continue) (M_expression condition state return continue break throw)))) return continue break throw)
-        (M_expression condition state return continue break throw))))
+        (M_while_helper condition body (M_statement body (call/cc (lambda (continue) (M_statement condition state return continue break throw)))) return continue break throw)
+        (M_expression condition state))))
 
 ;======================================================
 ; M_STATE IF
@@ -313,15 +310,81 @@
 
 ;; if statement
 (define M_if
-  (lambda (statement state)
-    (M_if_helper (condition_ statement) (statement_if statement) (statement_if_2 statement) state)))
+  (lambda (statement state return continue break throw)
+    (M_if_helper (condition_ statement) (statement_if statement) (statement_if_2 statement) state return continue break throw)))
 
 (define M_if_helper
-  (lambda (condition statement1 statement2 state)
+  (lambda (condition statement1 statement2 state return continue break throw)
     (cond
-      [(M_boolean condition state)(M_statement statement1 (M_expression condition state))]
+      [(M_boolean condition state)(M_statement statement1 (M_expression condition state) return continue break throw)]
       [(null? statement2) (M_expression condition state)]
-      [else (M_statement (car statement2) (M_expression condition state))])))
+      [else (M_statement (car statement2) (M_expression condition state) return continue break throw)])))
+
+;======================================================
+; M_STATE BLOCK
+;======================================================
+(define block_body cdr)
+(define M_block
+  (lambda (statement state return continue break throw)
+    (cond
+      ((null? statement) (pop state))
+      ((begin? statement) (M_block (block_body statement) (push state) return continue break throw))
+      (else (M_block (block_body statement) (M_statement (car statement) state return continue break throw) return continue break throw))))) ;rename later
+
+;======================================================
+; M_STATE TRY
+;======================================================
+(define try-body cadr)
+
+(define M_try_helper
+  (lambda (try statement state return continue break throw)
+    (cond
+      ((null? statement) state)
+      ((eq? 'return (function (first statement))) (M_state (first statement) (M_state-finally (finallyBlock try) state return continue break throw) return continue break throw))
+      ((eq? 'break (function (first statement))) (M_state (first statement) (M_state-finally (finallyBlock try) state return continue break throw) return continue break throw))
+      (else (M_try_helper try (rest statement) (M_state (first statement) state return continue break throw) return continue break throw)))))
+
+(define M_try
+  (lambda (statement state return continue break throw)
+    (cond
+      ((and (null? (catch_block statement)) (null? (finally_block statement))) (error 'error "nothing in catch and finally block"))
+      (else (M_finally (finally_block statement) (M_catch (catchBlock statement) (call/cc (lambda (throw) (M_try_helper statement (try-body statement) state return continue break throw))) return continue break throw) return continue break throw)))))
+
+;======================================================
+; M_STATE CATCH
+;======================================================
+(define catch-statement caddr)
+
+(define get-exception caadr)
+
+(define catch_block
+  (lambda (statement)
+    (if (null? (caddr statement))
+        '()
+        (caddr statement))))
+
+(define M_catch
+  (lambda (statement state return continue break throw)
+       (cond
+         ((null? statement) state)
+         ((and (catch? statement) (declared? 'exception state)) (M_catch (catch-statement statement) (rename (get-exception statement) state) return continue break throw))
+         ((catch? statement) state)
+         (else (M_catch (cdr statement) (M_statement (car statement) state return continue break throw) return continue break throw)))))
+
+;======================================================
+; M_STATE FINALLY
+;======================================================
+(define finally_block
+  (lambda (statement)
+    (if (null? (cadddr statement))
+      '()
+      (cadr (cadddr statement)))))
+
+(define M_finally
+  (lambda (statement state return continue break throw)
+    (cond
+      ((null? statement) state)
+      (else (M_finally (cdr statement) (M_statement (car statement) state return continue break throw) return continue break throw)))))
 
 ;======================================================
 ; M_STATE DECLARE

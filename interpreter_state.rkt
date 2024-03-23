@@ -69,3 +69,20 @@
 (define set-return-value
   (lambda (value state)
     (assign return-value-name value state)))
+
+;Layer stack
+(define top car)
+(define pop cdr)
+(define push
+  (lambda (state)
+    (cons '() state)))
+(define rename
+  (lambda (exception state)
+    (cons (rename-helper exception (top state)) (pop state))))
+
+(define rename-helper
+  (lambda (exception layer)
+    (cond
+      ((null? layer) '())
+      ((eq? (caar layer) 'exception) (cons (cons exception (cons (cadar layer) '())) (cdr layer)))
+      (else (cons (car layer) (rename-helper exception (cdr layer))))))) 
