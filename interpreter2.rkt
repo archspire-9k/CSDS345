@@ -23,6 +23,14 @@
 ;======================================================
 ; ABSTRACT FUNCTIONS
 ;======================================================
+;Layer stack
+(define pop cdr)
+(define push
+  (lambda (state)
+    (cons '() state)))
+
+; throw
+(define throw cadr)
 
 ; M_state_expr
 (define nested? list?)
@@ -80,6 +88,13 @@
 (define while? (matches? 'while))
 (define &&? (matches? '&&))
 (define ||? (matches? '||))
+(define try? (matches? 'try))
+(define catch? (matches? 'catch))
+(define continue? (matches? 'continue))
+(define break? (matches? 'break))
+(define throw? (matches? 'throw))
+(define finally? (matches? 'finally))
+  
 
 ;======================================================
 ; M-VALUE FUNCTION
@@ -243,15 +258,22 @@
 ; M_STATEMENTS
 ;======================================================
 (define M_statement
-  (lambda (statement state)
+  (lambda (statement state return continue break throw)
     (cond
       [(state-return? state) state] ; exit
       [(null? statement) (error "null statement")]
       [(return? statement) (M_return statement state)]
-      [(while? statement) (M_while statement state)]
-      [(if? statement) (M_if statement state)]
+      [(while? statement) (M_while statement state return continue break throw)]
+      [(if? statement) (M_if statement state return continue break throw)]
       [(assign? statement) (M_assign statement state)]
       [(declaration? statement) (M_declaration statement state)]
+      [(begin? statement) (M_block statement state return continue break throw)]
+      [(continue? statement) (continue state)]
+      [(break? statement) (break (pop state))]
+      [(throw? statement) (throw (addElement 'exception (M_value (throw statement) state) state))]
+      [(try? statement) (M_try statement state return continue break throw)]
+      [(catch? statement) (M_catch statement state return continue break throw) ]
+      [(finally? statement) (M_finally statement state return continue break throw)]
       [else (error "error statement" statement)])))
 
 ;======================================================
@@ -269,16 +291,18 @@
 
 ;; while statement
 (define M_while
-  (lambda (statement state)
-    (M_while_helper (while-condition statement)
+  (lambda (statement state return continue break throw)
+    (call/cc
+     (lambda (break)
+       (M_while_helper (while-condition statement)
                        (while-statement statement)
-                       state)))
+                       state return continue break throw)))))
 
 (define M_while_helper
-  (lambda (condition body state)
+  (lambda (condition body state return continue break throw)
     (if (M_boolean condition state)
-        (M_while_helper condition body (M_statement body (M_expression condition state)))
-        (M_expression condition state))))
+        (M_while_helper condition body (M_statement body (call/cc (lambda (continue) (M_expression condition state return continue break throw)))) return continue break throw)
+        (M_expression condition state return continue break throw))))
 
 ;======================================================
 ; M_STATE IF
